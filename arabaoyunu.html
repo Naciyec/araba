@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Basit Araba Oyunu</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        
+        #game-container {
+            position: relative;
+        }
+        
+        canvas {
+            border: 2px solid #333;
+            background-color: #444;
+        }
+        
+        #score-display {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 20px;
+        }
+        
+        #controls {
+            margin-top: 15px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
+        <div id="score-display">Skor: 0</div>
+        <div id="controls">
+            <p>Kontroller: Sol ok (←) ve Sağ ok (→) tuşları ile arabayı hareket ettirin.</p>
+            <button id="startButton">Oyunu Başlat</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startButton = document.getElementById('startButton');
+        const scoreDisplay = document.getElementById('score-display');
+        
+        const ROAD_WIDTH = canvas.width;
+        const ROAD_HEIGHT = canvas.height;
+        const LANE_COUNT = 3;
+        const LANE_WIDTH = ROAD_WIDTH / LANE_COUNT;
+        
+        let gameRunning = false;
+        let score = 0;
+        let animationFrameId;
+        
+        // Oyuncu arabası
+        const player = {
+            width: 40,
+            height: 70,
+            x: ROAD_WIDTH / 2 - 20,
+            y: ROAD_HEIGHT - 100,
+            speed: 5,
+            lane: 1  // 0, 1, 2 (sol, orta, sağ)
+        };
+        
+        // Engeller dizisi
+        let obstacles = [];
+        let obstacleSpeed = 5;
+        let obstacleFrequency = 100; // Kaç frame'de bir engel oluşacak
+        let frameCount = 0;
+        
+        // Yol çizgileri animasyonu için
+        let roadLineOffsetY = 0;
+        
+        function drawRoad() {
+            // Yol arkaplanı
+            ctx.fillStyle = '#444';
+            ctx.fillRect(0, 0, ROAD_WIDTH, ROAD_HEIGHT);
+            
+            // Yol çizgileri
+            ctx.strokeStyle = '#FFF';
+            ctx.setLineDash([30, 40]);
+            ctx.lineWidth = 2;
+            
+            // Sol şerit çizgisi
+            ctx.beginPath();
+            ctx.moveTo(LANE_WIDTH, 0);
+            ctx.lineTo(LANE_WIDTH, ROAD_HEIGHT);
+            ctx.stroke();
+            
+            // Sağ şerit çizgisi
+            ctx.beginPath();
+            ctx.moveTo(LANE_WIDTH * 2, 0);
+            ctx.lineTo(LANE_WIDTH * 2, ROAD_HEIGHT);
+            ctx.stroke();
+            
+            // Orta kesikli çizgiler
+            ctx.strokeStyle = '#FFF';
+            ctx.setLineDash([20, 30]);
+            ctx.lineWidth = 4;
+            
+            for (let y = roadLineOffsetY - 50; y < ROAD_HEIGHT; y += 50) {
+                ctx.beginPath();
+                ctx.moveTo(ROAD_WIDTH / 2, y);
+                ctx.lineTo(ROAD_WIDTH / 2, y + 30);
+                ctx.stroke();
+            }
+        }
+        
+        function drawPlayer() {
+            // Araba gövdesi
+            ctx.fillStyle = 'red';
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            
+            // Araba camı
+            ctx.fillStyle = '#99CCFF';
+            ctx.fillRect(player.x + 5, player.y + 5, player.width - 10, 20);
+            
+            // Tekerlekler
+            ctx.fillStyle = 'black';
+            ctx.fillRect(player.x - 5, player.y + 10, 5, 15);
+            ctx.fillRect(player.x + player.width, player.y + 10, 5, 15);
+            ctx.fillRect(player.x - 5, player.y + player.height - 25, 5, 15);
+            ctx.fillRect(player.x + player.width, player.y + player.height - 25, 5, 15);
+        }
+        
+        function createObstacle() {
+            const lane = Math.floor(Math.random() * LANE_COUNT);
+            const obstacle = {
+                width: 40,
+                height: 70,
+                x: lane * LANE_WIDTH + (LANE_WIDTH - 40) / 2,
+                y: -70,
+                lane: lane,
+                color: getRandomColor()
+            };
+            obstacles.push(obstacle);
+        }
+        
+        function getRandomColor() {
+            const colors = ['blue', 'green', 'yellow', 'purple', 'orange'];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+        
+        function drawObstacles() {
+            obstacles.forEach(obstacle => {
+                // Engel arabası
+                ctx.fillStyle = obstacle.color;
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                
+                // Araba camı
+                ctx.fillStyle = '#CCCCCC';
+                ctx.fillRect(obstacle.x + 5, obstacle.y + obstacle.height - 25, obstacle.width - 10, 20);
+            });
+        }
+        
+        function updateObstacles() {
+            // Engelleri aşağı doğru hareket ettir
+            obstacles.forEach(obstacle => {
+                obstacle.y += obstacleSpeed;
+            });
+            
+            // Ekrandan çıkan engelleri sil
+            obstacles = obstacles.filter(obstacle => obstacle.y < ROAD_HEIGHT);
+            
+            // Belirli aralıklarla yeni engeller oluştur
+            if (frameCount % obstacleFrequency === 0) {
+                createObstacle();
+            }
+            
+            // Her 500 puan sonrası oyunu zorlaştır
+            if (score > 0 && score % 500 === 0) {
+                obstacleSpeed += 0.2;
+                obstacleFrequency = Math.max(40, obstacleFrequency - 5);
+            }
+        }
+        
+        function checkCollision() {
+            for (let i = 0; i < obstacles.length; i++) {
+                const obstacle = obstacles[i];
+                
+                if (
+                    player.x < obstacle.x + obstacle.width &&
+                    player.x + player.width > obstacle.x &&
+                    player.y < obstacle.y + obstacle.height &&
+                    player.y + player.height > obstacle.y
+                ) {
+                    return true; // Çarpışma var
+                }
+            }
+            return false; // Çarpışma yok
+        }
+        
+        function updatePlayer() {
+            // Oyuncunun x pozisyonunu şeridine göre güncelle
+            const targetX = player.lane * LANE_WIDTH + (LANE_WIDTH - player.width) / 2;
+            player.x += (targetX - player.x) * 0.2;
+        }
+        
+        function updateScore() {
+            score++;
+            scoreDisplay.textContent = `Skor: ${score}`;
+        }
+        
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            // Ekranı temizle
+            ctx.clearRect(0, 0, ROAD_WIDTH, ROAD_HEIGHT);
+            
+            // Yol animasyonu
+            roadLineOffsetY = (roadLineOffsetY + obstacleSpeed) % 50;
+            
+            // Oyun elemanlarını çiz
+            drawRoad();
+            drawPlayer();
+            drawObstacles();
+            
+            // Güncelleme işlemleri
+            updatePlayer();
+            updateObstacles();
+            updateScore();
+            
+            // Çarpışma kontrolü
+            if (checkCollision()) {
+                gameOver();
+                return;
+            }
+            
+            frameCount++;
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+        
+        function gameOver() {
+            gameRunning = false;
+            cancelAnimationFrame(animationFrameId);
+            
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(0, 0, ROAD_WIDTH, ROAD_HEIGHT);
+            
+            ctx.fillStyle = 'white';
+            ctx.font = '30px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('OYUN BİTTİ', ROAD_WIDTH / 2, ROAD_HEIGHT / 2 - 30);
+            ctx.fillText(`Skor: ${score}`, ROAD_WIDTH / 2, ROAD_HEIGHT / 2 + 20);
+            
+            startButton.textContent = 'Tekrar Oyna';
+            startButton.style.display = 'block';
+        }
+        
+        function startGame() {
+            player.lane = 1;
+            obstacles = [];
+            score = 0;
+            obstacleSpeed = 5;
+            obstacleFrequency = 100;
+            frameCount = 0;
+            scoreDisplay.textContent = 'Skor: 0';
+            
+            startButton.style.display = 'none';
+            gameRunning = true;
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+        
+        // Klavye kontrolleri
+        document.addEventListener('keydown', (event) => {
+            if (!gameRunning) return;
+            
+            if (event.key === 'ArrowLeft' && player.lane > 0) {
+                player.lane--;
+            } else if (event.key === 'ArrowRight' && player.lane < LANE_COUNT - 1) {
+                player.lane++;
+            }
+        });
+        
+        // Başlangıç butonu
+        startButton.addEventListener('click', startGame);
+        
+        // İlk ekran çizimi
+        drawRoad();
+        drawPlayer();
+    </script>
+</body>
+</html>
