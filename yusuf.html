@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gelişmiş Araba Oyunu</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #222;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 400px;
+            height: 600px;
+        }
+        
+        canvas {
+            border: 3px solid #555;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+        
+        #ui-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        .game-ui {
+            position: absolute;
+            color: white;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        }
+        
+        #score-display {
+            top: 15px;
+            left: 15px;
+            font-size: 20px;
+        }
+        
+        #level-display {
+            top: 15px;
+            right: 15px;
+            font-size: 20px;
+        }
+        
+        #powerup-display {
+            top: 50px;
+            left: 15px;
+            font-size: 16px;
+        }
+        
+        #fuel-container {
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150px;
+            height: 15px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border: 2px solid white;
+            border-radius: 10px;
+        }
+        
+        #fuel-bar {
+            height: 100%;
+            width: 100%;
+            background-color: #00ff00;
+            border-radius: 8px;
+            transition: width 0.3s;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            color: white;
+            pointer-events: auto;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #3e8e41;
+        }
+        
+        #menu-screen, #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            pointer-events: auto;
+        }
+        
+        h1 {
+            font-size: 36px;
+            margin-bottom: 20px;
+            color: #ffcc00;
+            text-align: center;
+            text-shadow: 0 0 10px rgba(255, 204, 0, 0.5);
+        }
+        
+        h2 {
+            font-size: 26px;
+            margin-bottom: 30px;
+        }
+        
+        #high-scores {
+            margin: 20px 0;
+            width: 80%;
+        }
+        
+        #high-scores h3 {
+            text-align: center;
+            border-bottom: 1px solid #ffcc00;
+            padding-bottom: 5px;
+        }
+        
+        .score-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+        
+        #touch-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100px;
+            display: none;
+        }
+        
+        .touch-btn {
+            position: absolute;
+            bottom: 20px;
+            width: 70px;
+            height: 70px;
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 30px;
+            color: white;
+            pointer-events: auto;
+        }
+        
+        #left-btn {
+            left: 30px;
+        }
+        
+        #right-btn {
+            right: 30px;
+        }
+        
+        .difficulty-btn {
+            background-color: #555;
+            width: 120px;
+        }
+        
+        .difficulty-btn.active {
+            background-color: #ffcc00;
+            color: #333;
+        }
+        
+        @media (max-width: 600px) {
+            #game-container {
+                width: 350px;
+                height: 525px;
+            }
+            
+            #touch-controls {
+                display: block;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
+        
+        <div id="ui-container">
+            <div id="score-display" class="game-ui">Skor: 0</div>
+            <div id="level-display" class="game-ui">Seviye: 1</div>
+            <div id="powerup-display" class="game-ui"></div>
+            <div id="fuel-container" class="game-ui">
+                <div id="fuel-bar"></div>
+            </div>
+        </div>
+        
+        <div id="touch-controls">
+            <div id="left-btn" class="touch-btn">←</div>
+            <div id="right-btn" class="touch-btn">→</div>
+        </div>
+        
+        <div id="menu-screen">
+            <h1>ARABA YARIŞI</h1>
+            <h2>Engellere çarpmadan mümkün olduğunca uzun süre hayatta kalın!</h2>
+            
+            <div>
+                <button id="easy-btn" class="difficulty-btn active">Kolay</button>
+                <button id="medium-btn" class="difficulty-btn">Orta</button>
+                <button id="hard-btn" class="difficulty-btn">Zor</button>
+            </div>
+            
+            <button id="start-btn">OYUNU BAŞLAT</button>
+            
+            <div id="high-scores">
+                <h3>YÜKSEK SKORLAR</h3>
+                <div id="scores-list"></div>
+            </div>
+        </div>
+        
+        <div id="game-over-screen" style="display: none;">
+            <h1>OYUN BİTTİ</h1>
+            <h2 id="final-score">Skor: 0</h2>
+            <button id="restart-btn">TEKRAR OYNA</button>
+            <button id="menu-btn">ANA MENÜ</button>
+        </div>
+    </div>
+
+    <script>
+        // Canvas ve Context
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // UI Elemanları
+        const scoreDisplay = document.getElementById('score-display');
+        const levelDisplay = document.getElementById('level-display');
+        const powerupDisplay = document.getElementById('powerup-display');
+        const fuelBar = document.getElementById('fuel-bar');
+        const menuScreen = document.getElementById('menu-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const scoresListContainer = document.getElementById('scores-list');
+        
+        // Butonlar
+        const startButton = document.getElementById('start-btn');
+        const restartButton = document.getElementById('restart-btn');
+        const menuButton = document.getElementById('menu-btn');
+        const leftButton = document.getElementById('left-btn');
+        const rightButton = document.getElementById('right-btn');
+        const easyButton = document.getElementById('easy-btn');
+        const mediumButton = document.getElementById('medium-btn');
+        const hardButton = document.getElementById('hard-btn');
+        
+        // Oyun sabitleri
+        const ROAD_WIDTH = canvas.width;
+        const ROAD_HEIGHT = canvas.height;
+        const LANE_COUNT = 3;
+        const LANE_WIDTH = ROAD_WIDTH / LANE_COUNT;
+        
+        // Oyun değişkenleri
+        let gameRunning = false;
+        let score = 0;
+        let level = 1;
+        let animationFrameId;
+        let difficulty = 'easy';
+        let fuel = 100;
+        let highScores = JSON.parse(localStorage.getItem('carGameHighScores')) || [];
+        let isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+        
+        // Sesler
+        const sounds = {
+            engine: new Audio(),
+            crash: new Audio(),
+            powerup: new Audio(),
+            levelUp: new Audio(),
+            background: new Audio()
+        };
+        
+        // Ses dosyalarını yükle (normalde buraya gerçek ses dosyaları eklersiniz)
+        // sounds.engine.src = 'engine.mp3';
+        // sounds.crash.src = 'crash.mp3';
+        // sounds.powerup.src = 'powerup.mp3';
+        // sounds.levelUp.src = 'levelup.mp3';
+        // sounds.background.src = 'background.mp3';
+        
+        // Arkaplan müziği ayarları
+        sounds.background.loop = true;
+        sounds.background.volume = 0.5;
+        
+        // Önceden yüklenmiş görseller (sprites)
+        const sprites = {
+            car: new Image(),
+            obstacles: [new Image(), new Image(), new Image()],
+            powerups: [new Image(), new Image()],
+            background: new Image(),
+            explosion: new Image()
+        };
+        
+        // Oyuncu arabası
+        const player = {
+            width: 40,
+            height: 70,
+            x: ROAD_WIDTH / 2 - 20,
+            y: ROAD_HEIGHT - 100,
+            speed: 5,
+            lane: 1,
+            color: 'red',
+            hasShield: false,
+            speedBoost: 0,
+            shieldTime: 0,
+            speedBoostTime: 0
+        };
+        
+        // Engeller ve güç artırımları
+        let obstacles = [];
+        let powerups = [];
+        let obstacleSpeed = 3;
+        let obstacleFrequency = 120;
+        let powerupFrequency = 500;
+        let frameCount = 0;
+        
+        // Patlama animasyonu
+        let explosion = {
+            active: false,
+            x: 0,
+            y: 0,
+            frame: 0,
+            maxFrames: 8,
+            frameTime: 0,
+            frameDuration: 5
+        };
+        
+        // Yol animasyonu için
+        let roadLineOffsetY = 0;
+        let backgroundY = 0;
+        
+        // Zorluk Seviyesi Ayarları
+        const difficultySettings = {
+            easy: {
+                obstacleSpeed: 3,
+                obstacleFrequency: 120,
+                powerupFrequency: 400,
+                fuelDecrease: 0.1
+            },
+            medium: {
+                obstacleSpeed: 4,
+                obstacleFrequency: 100,
+                powerupFrequency: 500,
+                fuelDecrease: 0.15
+            },
+            hard: {
+                obstacleSpeed: 5,
+                obstacleFrequency: 80,
+                powerupFrequency: 600,
+                fuelDecrease: 0.2
+            }
+        };
+        
+        // Oyun başlangıç ayarlarını yapma
+        function initGame() {
+            const settings = difficultySettings[difficulty];
+            
+            player.lane = 1;
+            player.hasShield = false;
+            player.speedBoost = 0;
+            player.shieldTime = 0;
+            player.speedBoostTime = 0;
+            
+            obstacles = [];
+            powerups = [];
+            score = 0;
+            level = 1;
+            fuel = 100;
+            
+            obstacleSpeed = settings.obstacleSpeed;
+            obstacleFrequency = settings.obstacleFrequency;
+            powerupFrequency = settings.powerupFrequency;
+            
+            frameCount = 0;
+            
+            updateScoreDisplay();
+            updateLevelDisplay();
+            updatePowerupDisplay();
+            updateFuelDisplay();
+        }
+        
+        // UI Güncellemeleri
+        function updateScoreDisplay() {
+            scoreDisplay.textContent = `Skor: ${score}`;
+        }
+        
+        function updateLevelDisplay() {
+            levelDisplay.textContent = `Seviye: ${level}`;
+        }
+        
+        function updatePowerupDisplay() {
+            let text = '';
+            
+            if (player.hasShield) {
+                text += `Kalkan: ${Math.ceil(player.shieldTime / 60)}s `;
+            }
+            
+            if (player.speedBoost > 0) {
+                text += `Hız: ${Math.ceil(player.speedBoostTime / 60)}s`;
+            }
+            
+            powerupDisplay.textContent = text;
+        }
+        
+        function updateFuelDisplay() {
+            fuelBar.style.width = `${fuel}%`;
+            
+            if (fuel < 30) {
+                fuelBar.style.backgroundColor = '#ff3300';
+            } else if (fuel < 60) {
+                fuelBar.style.backgroundColor = '#ffcc00';
+            } else {
+                fuelBar.style.backgroundColor = '#00ff00';
+            }
+        }
+        
+        // Yüksek skorları göster
+        function displayHighScores() {
+            scoresListContainer.innerHTML = '';
+            
+            const sortedScores = [...highScores].sort((a, b) => b.score - a.score).slice(0, 5);
+            
+            if (sortedScores.length === 0) {
+                scoresListContainer.innerHTML = '<p style="text-align: center;">Henüz bir skor kaydedilmedi.</p>';
+                return;
+            }
+            
+            sortedScores.forEach((scoreData, index) => {
+                const scoreItem = document.createElement('div');
+                scoreItem.className = 'score-item';
+                scoreItem.innerHTML = `
+                    <span>${index + 1}. ${scoreData.name || 'Anonim'}</span>
+                    <span>${scoreData.score} (${scoreData.difficulty})</span>
+                `;
+                scoresListContainer.appendChild(scoreItem);
+            });
+        }
+        
+        // Yüksek skoru kaydet
+        function saveHighScore() {
+            const playerName = prompt('Yüksek skor tablosuna eklenmek için bir isim girin:') || 'Anonim';
+            
+            highScores.push({
+                name: playerName,
+                score: score,
+                difficulty: difficulty,
+                date: new Date().toISOString()
+            });
+            
+            // En fazla 10 skor sakla
+            if (highScores.length > 10) {
+                highScores.sort((a, b) => b.score - a.score);
+                highScores = highScores.slice(0, 10);
+            }
+            
+            localStorage.setItem('carGameHighScores', JSON.stringify(highScores));
+            displayHighScores();
+        }
+        
+        // Yol çizimi
+        function drawRoad() {
+            // Arka plan görseli (varsa)
+            // ctx.drawImage(sprites.background, 0, backgroundY - ROAD_HEIGHT, ROAD_WIDTH, ROAD_HEIGHT * 2);
+            
+            // Yol arkaplanı
+            ctx.fillStyle = '#333';
+            ctx.fillRect(0, 0, ROAD_WIDTH, ROAD_HEIGHT);
+            
+            // Yol kenarları
+            ctx.fillStyle = '#888';
+            ctx.fillRect(0, 0, 15, ROAD_HEIGHT);
+            ctx.fillRect(ROAD_WIDTH - 15, 0, 15, ROAD_HEIGHT);
+            
+            // Kaldırım çizgileri
+            ctx.strokeStyle = '#FFF';
+            ctx.setLineDash([]);
+            ctx.lineWidth = 3;
+            
+            ctx.beginPath();
+            ctx.moveTo(15, 0);
+            ctx.lineTo(15, ROAD_HEIGHT);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(ROAD_WIDTH - 15, 0);
+            ctx.lineTo(ROAD_WIDTH - 15, ROAD_HEIGHT);
+            ctx.stroke();
+            
+            // Şerit çizgileri
+            ctx.strokeStyle = '#FFF';
+            ctx.setLineDash([30, 40]);
+            ctx.lineWidth = 3;
+            
+            // Sol şerit çizgisi
+            ctx.beginPath();
+            ctx.moveTo(LANE_WIDTH, 0);
+            ctx.lineTo(LANE_WIDTH, ROAD_HEIGHT);
+            ctx.stroke();
+            
+            // Sağ şerit çizgisi
+            ctx.beginPath();
+            ctx.moveTo(LANE_WIDTH * 2, 0);
+            ctx.lineTo(LANE_WIDTH * 2, ROAD_HEIGHT);
+            ctx.stroke();
+            
+            // Yol çizgileri animasyonu
+            ctx.strokeStyle = '#FFE';
+            ctx.setLineDash([20, 30]);
+            ctx.lineWidth = 4;
+            
+            for (let y = roadLineOffsetY - 50; y < ROAD_HEIGHT; y += 50) {
+                // Orta şerit çizgileri
+                ctx.beginPath();
+                ctx.moveTo(ROAD_WIDTH / 2, y);
+                ctx.lineTo(ROAD_WIDTH / 2, y + 30);
+                ctx.stroke();
+            }
+        }
+        
+        // Oyuncu arabasını çiz
+        function drawPlayer() {
+            // Gölge efekti
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.beginPath();
+            ctx.ellipse(player.x + player.width / 2, player.y + player.height + 5, player.width / 2, 10, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Araba gövdesi
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            
+            // Araba farları
+            ctx.fillStyle = '#FFFF00';
+            ctx.fillRect(player.x + 5, player.y, 5, 5);
+            ctx.fillRect(player.x + player.width - 10, player.y, 5, 5);
+            
+            // Araba camı
+            ctx.fillStyle = '#AADDFF';
+            ctx.fillRect(player.x + 5, player.y + 10, player.width - 10, 20);
+            
+            // Tekerlekler
+            ctx.fillStyle = '#000';
+            ctx.fillRect(player.x - 3, player.y + 10, 5, 15);
+            ctx.fillRect(player.x + player.width - 2, player.y + 10, 5, 15);
+            ctx.fillRect(player.x - 3, player.y + player.height - 25, 5, 15);
+            ctx.fillRect(player.x + player.width - 2, player.y + player.height - 25, 5, 15);
+            
+            // Kalkan efekti
+            if (player.hasShield) {
+                ctx.strokeStyle = 'rgba(0, 100, 255, 0.7)';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.ellipse(player.x + player.width / 2, player.y + player.height / 2, 
+                           player.width / 1.5, player.height / 1.5, 0, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                ctx.strokeStyle = 'rgba(100, 200, 255, 0.5)';
+                ctx.beginPath();
+                ctx.ellipse(player.x + player.width / 2, player.y + player.height / 2, 
+                           player.width / 1.3, player.height / 1.3, 0, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            
+            // Hız efekti
+            if (player.speedBoost > 0) {
+                ctx.fillStyle = 'rgba(255, 100, 0, 0.7)';
+                ctx.beginPath();
+                ctx.moveTo(player.x, player.y + player.height);
+                ctx.lineTo(player.x + player.width, player.y + player.height);
+                ctx.lineTo(player.x + player.width / 2, player.y + player.height + 20);
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
+        
+        // Engel oluştur
+        function createObstacle() {
+            const lane = Math.floor(Math.random() * LANE_COUNT);
+            const type = Math.floor(Math.random() * 3); // 0: araba, 1: kamyon, 2: petrol bidonu
+            
+            let width = 40;
+            let height = 70;
+            
+            if (type === 1) { // Kamyon
+                width = 45;
+                height = 90;
+            } else if (type === 2) { // Petrol bidonu
+                width = 30;
+                height = 40;
+            }
+            
+            const obstacle = {
+                width: width,
+                height: height,
+                x: lane * LANE_WIDTH + (LANE_WIDTH - width) / 2,
+                y: -height,
+                lane: lane,
+                type: type,
+                color: getRandomColor()
+            };
+            
+            obstacles.push(obstacle);
+        }
+        
+        // Güç artırımı oluştur
+        function createPowerup() {
+            const lane = Math.floor(Math.random() * LANE_COUNT);
+            const type = Math.floor(Math.random() * 3); // 0: yakıt, 1: kalkan, 2: hız artırımı
+            
+            const powerup = {
+                width: 30,
+                height: 30,
+                x: lane * LANE_WIDTH + (LANE_WIDTH - 30) / 2,
+                y: -30,
+                lane: lane,
+                type: type
+            };
+            
+            powerups.push(powerup);
+        }
+        
+        // Rastgele renk seç
+        function getRandomColor() {
+            const colors = ['#3366CC', '#6633CC', '#CC3366', '#33CC66', '#CC6633', '#66CC33'];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+        
+        // Engelleri çiz
+        function drawObstacles() {
+            obstacles.forEach(obstacle => {
+                // Gölge efekti
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.beginPath();
+                ctx.ellipse(obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height + 5, obstacle.width / 2, 10, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                if (obstacle.type === 0) { // Araba
+                    // Araba gövdesi
+                    ctx.fillStyle = obstacle.color;
+                    ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                    
+                    // Araba camı
+                    ctx.fillStyle = '#CCCCCC';
+                    ctx.fillRect(obstacle.x + 5, obstacle.y + obstacle.height - 30, obstacle.width - 10, 20);
+                    
+                    // Araba arkası
+                    ctx.fillStyle = '#FF0000';
+                    ctx.fillRect(obstacle.x + 5, obstacle.y + obstacle.height - 7, 5, 5);
+                    ctx.fillRect(obstacle.x + obstacle.width - 10, obstacle.y + obstacle.height - 7, 5, 5);
+                    
+                } else if (obstacle.type === 1) { // Kamyon
+                    // Kamyon gövdesi
+                    ctx.fillStyle = '#444444';
+                    ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                    
+                    // Kamyon kabini
+                    ctx.fillStyle = obstacle.color;
+                    ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height / 3);
+                    
+                    // Kamyon camı
+                    ctx.fillStyle = '#AAAAAA';
+                    ctx.fillRect(obstacle.x + 5, obstacle.y + 5, obstacle.width - 10, obstacle.height / 5);
+                    
+                    // Kamyon arkası
+                    ctx.fillStyle = '#FF0000';
+                    ctx.fillRect(obstacle.x + 5, obstacle.y + obstacle.height - 7, 5, 5);
+                    ctx.fillRect(obstacle.x + obstacle.width - 10, obstacle.y + obstacle.height - 7, 5, 5);
+                    
+                } else if (obstacle.type === 2) { // Petrol bidonu
+                    // Bidon gövdesi
+                    ctx.fillStyle = '#CC3300';
+                    ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                    
+                    // Bidon detayları
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([]);
+                    ctx.strokeRect(obstacle.x + 3, obstacle.y + 3, obstacle.width - 6, obstacle.height - 6);
+                    
+                    // Tehlike işareti
+                    ctx.fillStyle = '#FFCC00';
+                    ctx.beginPath();
+                    ctx.moveTo(obstacle.x + obstacle.width / 2, obstacle.y + 8);
+                    ctx.lineTo(obstacle.x + obstacle.width - 8, obstacle.y + obstacle.height - 8);
+                    ctx.lineTo(obstacle.x + 8, obstacle.y + obstacle.height - 8);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    ctx.fillStyle = '#000';
+                    ctx.font = '12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('!', obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height - 15);
+                }
+            });
+        }
+        
+        // Güç artırımları çiz
+        function drawPowerups() {
+            powerups.forEach(powerup => {
+                if (powerup.type === 0) { // Yakıt
+                    // Yakıt bidonu
+                    ctx.fillStyle = '#00CC00';
+                    ctx.fillRect(powerup.x, powerup.y, powerup.width, powerup.height);
+                    
+                    // Bidon detayları
+                    ctx.strokeStyle = '#008800';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([]);
+                    ctx.strokeRect(powerup.x + 3, powerup.y + 3, powerup.width - 6, powerup.height - 6);
+                    
+                    // Yanıp sönme efekti (frameCount ile)
+                    if (frameCount % 20 < 10) {
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.font = '15px Arial Bold';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('F', powerup.x + powerup.width / 2, powerup.y + powerup.height - 10);
+                    }
+                } else if (powerup.type === 1) { // Kalkan
+                    // Kalkan ikonu
+                    ctx.fillStyle = '#0088FF';
+                    ctx.beginPath();
+                    ctx.arc(powerup.x + powerup.width / 2, powerup.y + powerup.height / 2, powerup.width / 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Yanıp sönme efekti
+                    if (frameCount % 20 < 10) {
+                        ctx.strokeStyle = '#FFFFFF';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(powerup.x + powerup.width / 2, powerup.y + powerup.height / 2, powerup.width / 3, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                } else if (powerup.type === 2) { // Hız artırımı
+                    // Hız artırımı ikonu
+                    ctx.fillStyle = '#FF8800';
+                    ctx.beginPath();
+                    ctx.moveTo(powerup.x + powerup.width / 2, powerup.y);
+                    ctx.lineTo(powerup.x + powerup.width, powerup.y + powerup.height);
+                    ctx.lineTo(powerup.x, powerup.y + powerup.height);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Yanıp sönme efekti
+                    if (frameCount % 20 < 10) {
+                        ctx.strokeStyle = '#FFFFFF';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(powerup.x + powerup.width / 2, powerup.y + 5);
+                        ctx.lineTo(powerup.x + powerup.width - 5, powerup.y + powerup.height - 5);
+                        ctx.lineTo(powerup.x + 5, powerup.y + powerup.height - 5);
+                        ctx.closePath();
+                        ctx.stroke();
+                    }
+                }
+            });
+        }
+        
+        // Patlama efektini çiz
+        function drawExplosion() {
+            if (!explosion.active) return;
+        // Patlama efektini çiz
+function drawExplosion() {
+    if (!explosion.active) return;
+    
+    ctx.fillStyle = 'rgba(255, 100, 0, 0.7)';
+    ctx.beginPath();
+    ctx.arc(explosion.x, explosion.y, 10 + explosion.frame * 5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.fillStyle = 'rgba(255, 200, 0, 0.9)';
+    ctx.beginPath();
+    ctx.arc(explosion.x, explosion.y, 5 + explosion.frame * 3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Patlama animasyonunu ilerlet
+    explosion.frameTime++;
+    if (explosion.frameTime >= explosion.frameDuration) {
+        explosion.frameTime = 0;
+        explosion.frame++;
+        if (explosion.frame >= explosion.maxFrames) {
+            explosion.active = false;
+        }
+    }
+}
+
+// Engelleri güncelle
+function updateObstacles() {
+    // Yeni engeller oluştur
+    if (frameCount % obstacleFrequency === 0) {
+        createObstacle();
+    }
+    
+    // Engelleri hareket ettir
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+        const obstacle = obstacles[i];
+        obstacle.y += obstacleSpeed + (player.speedBoost / 2);
+        
+        // Ekrandan çıkan engelleri kaldır
+        if (obstacle.y > ROAD_HEIGHT) {
+            obstacles.splice(i, 1);
+            score += 10;
+            updateScoreDisplay();
+        }
+    }
+}
+
+// Güç artırımlarını güncelle
+function updatePowerups() {
+    // Yeni güç artırımları oluştur
+    if (frameCount % powerupFrequency === 0) {
+        createPowerup();
+    }
+    
+    // Güç artırımlarını hareket ettir
+    for (let i = powerups.length - 1; i >= 0; i--) {
+        const powerup = powerups[i];
+        powerup.y += obstacleSpeed + (player.speedBoost / 2);
+        
+        // Ekrandan çıkan güç artırımlarını kaldır
+        if (powerup.y > ROAD_HEIGHT) {
+            powerups.splice(i, 1);
+        }
+    }
+}
+
+// Çarpışma kontrolü
+function checkCollisions() {
+    // Engeller ile çarpışma
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+        const obstacle = obstacles[i];
+        
+        if (
+            player.x < obstacle.x + obstacle.width &&
+            player.x + player.width > obstacle.x &&
+            player.y < obstacle.y + obstacle.height &&
+            player.y + player.height > obstacle.y
+        ) {
+            // Eğer kalkan varsa engeli yok et
+            if (player.hasShield) {
+                obstacles.splice(i, 1);
+                score += 15;
+                updateScoreDisplay();
+                // sounds.powerup.play();
+                
+                // Patlama efekti
+                explosion.active = true;
+                explosion.x = obstacle.x + obstacle.width / 2;
+                explosion.y = obstacle.y + obstacle.height / 2;
+                explosion.frame = 0;
+                explosion.frameTime = 0;
+            } else {
+                // Oyun bitti
+                gameOver();
+                return;
+            }
+        }
+    }
+    
+    // Güç artırımları ile çarpışma
+    for (let i = powerups.length - 1; i >= 0; i--) {
+        const powerup = powerups[i];
+        
+        if (
+            player.x < powerup.x + powerup.width &&
+            player.x + player.width > powerup.x &&
+            player.y < powerup.y + powerup.height &&
+            player.y + player.height > powerup.y
+        ) {
+            if (powerup.type === 0) { // Yakıt
+                fuel = Math.min(100, fuel + 30);
+                updateFuelDisplay();
+            } else if (powerup.type === 1) { // Kalkan
+                player.hasShield = true;
+                player.shieldTime = 600; // 10 saniye
+            } else if (powerup.type === 2) { // Hız artırımı
+                player.speedBoost = 3;
+                player.speedBoostTime = 300; // 5 saniye
+            }
+            
+            powerups.splice(i, 1);
+            score += 5;
+            updateScoreDisplay();
+            // sounds.powerup.play();
+        }
+    }
+}
+
+// Güç artırımlarını güncelle
+function updatePowerupEffects() {
+    if (player.hasShield) {
+        player.shieldTime--;
+        if (player.shieldTime <= 0) {
+            player.hasShield = false;
+        }
+    }
+    
+    if (player.speedBoost > 0) {
+        player.speedBoostTime--;
+        if (player.speedBoostTime <= 0) {
+            player.speedBoost = 0;
+        }
+    }
+    
+    updatePowerupDisplay();
+}
+
+// Yakıt tüketimi
+function consumeFuel() {
+    const fuelDecrease = difficultySettings[difficulty].fuelDecrease;
+    fuel -= fuelDecrease;
+    
+    if (fuel <= 0) {
+        fuel = 0;
+        gameOver();
+    }
+    
+    updateFuelDisplay();
+}
+
+// Seviye yükseltme
+function checkLevelUp() {
+    const levelThreshold = level * 1000;
+    
+    if (score >= levelThreshold) {
+        level++;
+        obstacleSpeed += 0.5;
+        obstacleFrequency = Math.max(50, obstacleFrequency - 10);
+        updateLevelDisplay();
+        // sounds.levelUp.play();
+    }
+}
+
+// Oyun döngüsü
+function gameLoop() {
+    if (!gameRunning) return;
+    
+    // Ekranı temizle
+    ctx.clearRect(0, 0, ROAD_WIDTH, ROAD_HEIGHT);
+    
+    // Yol ve arkaplanı çiz
+    drawRoad();
+    
+    // Engelleri ve güç artırımlarını güncelle
+    updateObstacles();
+    updatePowerups();
+    
+    // Çarpışmaları kontrol et
+    checkCollisions();
+    
+    // Güç artırımı etkilerini güncelle
+    updatePowerupEffects();
+    
+    // Yakıt tüketimi
+    if (frameCount % 60 === 0) {
+        consumeFuel();
+    }
+    
+    // Seviye yükseltme kontrolü
+    checkLevelUp();
+    
+    // Oyuncu, engeller ve güç artırımlarını çiz
+    drawPlayer();
+    drawObstacles();
+    drawPowerups();
+    drawExplosion();
+    
+    // Animasyon değişkenlerini güncelle
+    roadLineOffsetY = (roadLineOffsetY + obstacleSpeed + player.speedBoost) % 50;
+    backgroundY = (backgroundY + obstacleSpeed / 2) % ROAD_HEIGHT;
+    
+    // Frame sayısını artır
+    frameCount++;
+    
+    // Bir sonraki kareyi çiz
+    animationFrameId = requestAnimationFrame(gameLoop);
+}
+
+// Oyunu başlat
+function startGame() {
+    initGame();
+    menuScreen.style.display = 'none';
+    gameOverScreen.style.display = 'none';
+    gameRunning = true;
+    
+    // Arkaplan müziğini başlat
+    // sounds.background.play();
+    
+    gameLoop();
+}
+
+// Oyun bitişi
+function gameOver() {
+    gameRunning = false;
+    cancelAnimationFrame(animationFrameId);
+    
+    // Arkaplan müziğini durdur
+    // sounds.background.pause();
+    // sounds.crash.play();
+    
+    // Patlama efekti
+    explosion.active = true;
+    explosion.x = player.x + player.width / 2;
+    explosion.y = player.y + player.height / 2;
+    explosion.frame = 0;
+    explosion.frameTime = 0;
+    
+    // Patlama efektini göstermek için son bir kare çiz
+    drawExplosion();
+    
+    // Bitiş ekranını göster
+    finalScoreDisplay.textContent = `Skor: ${score}`;
+    gameOverScreen.style.display = 'flex';
+    
+    // Yüksek skoru kaydet
+    if (score > 0) {
+        const lowestHighScore = highScores.length < 10 ? 0 : 
+            Math.min(...highScores.map(s => s.score));
+        
+        if (highScores.length < 10 || score > lowestHighScore) {
+            saveHighScore();
+        }
+    }
+}
+
+// Oyuncu arabasını hareket ettir
+function movePlayerLane(direction) {
+    const targetLane = player.lane + direction;
+    
+    if (targetLane >= 0 && targetLane < LANE_COUNT) {
+        player.lane = targetLane;
+        const targetX = player.lane * LANE_WIDTH + (LANE_WIDTH - player.width) / 2;
+        
+        // Animasyonlu hareket yerine direkt konum değiştir
+        player.x = targetX;
+    }
+}
+
+// Klavye kontrolleri
+document.addEventListener('keydown', function(e) {
+    if (!gameRunning) return;
+    
+    if (e.key === 'ArrowLeft' || e.key === 'a') {
+        movePlayerLane(-1);
+    } else if (e.key === 'ArrowRight' || e.key === 'd') {
+        movePlayerLane(1);
+    }
+});
+
+// Dokunmatik ekran kontrolleri
+if (isTouchDevice) {
+    leftButton.addEventListener('touchstart', function(e) {
+        e.preventDefault();
+        if (gameRunning) movePlayerLane(-1);
+    });
+    
+    rightButton.addEventListener('touchstart', function(e) {
+        e.preventDefault();
+        if (gameRunning) movePlayerLane(1);
+    });
+}
+
+// Fare tıklama kontrolleri
+leftButton.addEventListener('click', function() {
+    if (gameRunning) movePlayerLane(-1);
+});
+
+rightButton.addEventListener('click', function() {
+    if (gameRunning) movePlayerLane(1);
+});
+
+// Buton olay dinleyicileri
+startButton.addEventListener('click', startGame);
+restartButton.addEventListener('click', startGame);
+menuButton.addEventListener('click', function() {
+    gameOverScreen.style.display = 'none';
+    menuScreen.style.display = 'flex';
+});
+
+// Zorluk seviyesi butonları
+easyButton.addEventListener('click', function() {
+    difficulty = 'easy';
+    easyButton.classList.add('active');
+    mediumButton.classList.remove('active');
+    hardButton.classList.remove('active');
+});
+
+mediumButton.addEventListener('click', function() {
+    difficulty = 'medium';
+    easyButton.classList.remove('active');
+    mediumButton.classList.add('active');
+    hardButton.classList.remove('active');
+});
+
+hardButton.addEventListener('click', function() {
+    difficulty = 'hard';
+    easyButton.classList.remove('active');
+    mediumButton.classList.remove('active');
+    hardButton.classList.add('active');
+});
+
+// Pencere yeniden boyutlandırıldığında
+window.addEventListener('resize', function() {
+    // Mobil kontrollerini ayarla
+    if (window.innerWidth <= 600) {
+        document.getElementById('touch-controls').style.display = 'block';
+        isTouchDevice = true;
+    } else {
+        document.getElementById('touch-controls').style.display = 'none';
+        isTouchDevice = false;
+    }
+});
+
+// Yüksek skorları yükle
+displayHighScores();
+
+// İlk yükleme kontrolü
+if (window.innerWidth <= 600) {
+    document.getElementById('touch-controls').style.display = 'block';
+    isTouchDevice = true;
+}}
+        
